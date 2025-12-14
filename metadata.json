@@ -1,0 +1,7 @@
+{
+  "name": "ORGANISE WITH OBIRI",
+  "description": "An all-in-one student life operating system powered by AI to help manage time, finances, motivation, and learning.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
