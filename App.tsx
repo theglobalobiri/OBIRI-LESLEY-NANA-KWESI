@@ -233,7 +233,7 @@ export default function App() {
               setExpenses={updateExpenses} 
             />
           )}
-          {currentView === ModuleView.LEARN && <Learn />}
+          {currentView === ModuleView.LEARN && <Learn userLanguage={userState.language} />}
           {currentView === ModuleView.TASKS && (
             <TaskManager 
               tasks={userState.tasks} 
@@ -245,6 +245,7 @@ export default function App() {
             <LiveChat 
               botConfig={userState.botConfig}
               updateBotConfig={updateBotConfig}
+              userLanguage={userState.language}
             />
           )}
           {currentView === ModuleView.PROFILE && (

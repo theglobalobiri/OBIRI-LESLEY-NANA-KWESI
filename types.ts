@@ -58,6 +58,7 @@ export interface UserState {
   program?: string;
   location?: string;
   avatar?: string;
+  language: string;
   streak: number;
   motivationQuote: string;
   tasks: Task[];
@@ -71,6 +72,7 @@ export const INITIAL_STATE: UserState = {
   name: 'Student',
   program: 'General Studies',
   location: 'Campus',
+  language: 'English',
   streak: 5,
   motivationQuote: 'The best way to predict the future is to create it.',
   tasks: [],

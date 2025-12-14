@@ -6,14 +6,15 @@ const apiKey = process.env.API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey });
 
-export const generateMotivation = async (userName: string, upcomingTasksCount: number): Promise<string> => {
+export const generateMotivation = async (userName: string, upcomingTasksCount: number, language: string = 'English'): Promise<string> => {
   if (!apiKey) return "Keep pushing forward! (API Key missing)";
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Generate a short, punchy, motivational quote for a student named ${userName} who has ${upcomingTasksCount} tasks pending. 
-      Focus on discipline and 'building' their future. Max 20 words.`,
+      Focus on discipline and 'building' their future. Max 20 words.
+      IMPORTANT: Respond in the following language: ${language}.`,
     });
     return response.text || "Stay focused and keep building your future.";
   } catch (error) {
@@ -22,37 +23,47 @@ export const generateMotivation = async (userName: string, upcomingTasksCount: n
   }
 };
 
-export const chatWithObiri = async (message: string, context: string): Promise<string> => {
+export const chatWithObiri = async (message: string, context: string, language: string = 'English'): Promise<string> => {
   if (!apiKey) return "I can't connect to my brain right now (API Key missing).";
 
   try {
-    // Upgraded to gemini-3-pro-preview with thinking config for complex queries
+    // Upgraded to gemini-3-pro-preview with thinking config AND Google Search
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `You are Obiri, a wise and friendly student mentor and financial educator. 
+      contents: `You are Obiri, a wise and friendly student mentor and life operating system.
       
-      Your goal is to explain concepts simply (ELI15), focusing on:
-      1. Financial literacy (Compound interest, Savings, T-Bills, Crypto basics).
-      2. Time management (The VIBE system: Vision, Intent, Build, Execute).
-      3. Motivation.
+      Your goal is to be a supportive companion with access to the entire world of information.
+      
+      GUIDELINES:
+      1. IF the user asks about REAL-TIME info (Weather, News, Sports, Stock Prices): Use the Google Search tool.
+      2. IF the user asks about FINANCE: Explain concepts simply (ELI15), focusing on financial literacy.
+      3. IF the user asks about PRODUCTIVITY: Use the VIBE system (Vision, Intent, Build, Execute).
+      4. IF the user asks GENERAL questions: Be a friendly, encouraging peer. You can discuss any topic (history, science, entertainment, etc.).
 
       CONTEXT: ${context}
+      USER PREFERRED LANGUAGE: ${language}
       
       USER QUESTION: ${message}
       
-      Keep the answer concise, encouraging, and practical.`,
+      Keep the answer concise, encouraging, and practical. ALWAYS respond in the user's preferred language (${language}).`,
       config: {
-        thinkingConfig: { thinkingBudget: 32768 }
+        thinkingConfig: { thinkingBudget: 32768 },
+        tools: [{ googleSearch: {} }]
       }
     });
-    return response.text || "I'm thinking, but I couldn't come up with an answer.";
+
+    // Check for grounding metadata (search results) and append sources if available
+    let text = response.text || "I'm thinking, but I couldn't come up with an answer.";
+    
+    // Clean up any potential markdown artifacts if needed, though gemini-3-pro is usually good.
+    return text;
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "I'm having trouble connecting to the network. Please try again later.";
+    return "I'm having trouble connecting to the network to check that information. Please try again later.";
   }
 };
 
-export const explainFinancialConcept = async (topic: string): Promise<string> => {
+export const explainFinancialConcept = async (topic: string, language: string = 'English'): Promise<string> => {
   if (!apiKey) return "Content unavailable without API Key.";
 
   try {
@@ -63,7 +74,8 @@ export const explainFinancialConcept = async (topic: string): Promise<string> =>
       1. What it is (Simple definition).
       2. Why it matters (The 'Vision').
       3. One risk to watch out for.
-      Keep it under 150 words.`,
+      Keep it under 150 words.
+      Respond in: ${language}`,
     });
     return response.text || "Could not generate explanation.";
   } catch (error) {
@@ -169,19 +181,65 @@ export const getTrendingStudentNews = async (): Promise<{text: string, sources: 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: "Search for 5 trending, educational, or fun news stories/blogs suitable for university students from the last 48 hours. Provide a summary list.",
+      contents: "Search for 5 trending, educational, or fun news stories/blogs suitable for university students from the last 48 hours. Provide a summary list. IMPORTANT: Do not use bolding asterisks (**) or markdown bullets. Use plain text or simple dashes for list items.",
       config: {
         tools: [{googleSearch: {}}],
       },
     });
 
-    const text = response.text || "No news found.";
+    let text = response.text || "No news found.";
+    
+    // Aggressive cleaning of Markdown artifacts
+    // Removes bolding (**), italics (*), headers (#), and cleans up bullet points
+    text = text
+      .replace(/\*\*/g, '')      // Remove bold
+      .replace(/\*/g, '')        // Remove stray asterisks
+      .replace(/#{1,6}\s/g, '')  // Remove markdown headers
+      .replace(/`/g, '')         // Remove code ticks
+      .replace(/^\s*-\s*/gm, '• ') // Replace markdown dashes with bullets for cleaner look
+      .replace(/^\s*\*\s*/gm, '• '); // Replace asterisk bullets with clean bullets
+
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     
     return { text, sources };
   } catch (error) {
     console.error("News Fetch Error:", error);
     return { text: "Could not fetch trending news at the moment.", sources: [] };
+  }
+};
+
+export const generateNewsIllustration = async (headline: string): Promise<string | null> => {
+  if (!apiKey) return null;
+
+  try {
+    // Using gemini-2.5-flash-image (Nano Banana) for image generation
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          {
+            text: `Create a modern, vibrant, digital illustration for a student news feed. 
+            Theme: ${headline.substring(0, 100)}. 
+            Style: Minimalist vector art, soft colors, educational, inspiring. 
+            No text in the image.`
+          }
+        ]
+      },
+      config: {
+        // No responseMimeType for image models
+      }
+    });
+
+    // Extract image from response
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Image Gen Error:", error);
+    return null;
   }
 };
 

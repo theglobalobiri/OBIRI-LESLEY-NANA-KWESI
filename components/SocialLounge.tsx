@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Newspaper, Gamepad2, Users, Send, ExternalLink, Trophy, RefreshCw, HelpCircle, User, Loader2 } from 'lucide-react';
-import { getTrendingStudentNews, generateQuiz, getWordGameData } from '../services/geminiService';
-import ReactMarkdown from 'react-markdown'; // Assuming standard environment, but we'll use simple rendering if unavailable
+import { Newspaper, Gamepad2, Users, Send, ExternalLink, Trophy, RefreshCw, HelpCircle, User, Loader2, ImageIcon } from 'lucide-react';
+import { getTrendingStudentNews, generateQuiz, getWordGameData, generateNewsIllustration } from '../services/geminiService';
 
 export const SocialLounge: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'news' | 'games' | 'chat'>('news');
@@ -9,29 +8,29 @@ export const SocialLounge: React.FC = () => {
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col gap-6">
       {/* Tab Navigation */}
-      <div className="flex bg-white rounded-xl p-1 border border-gray-200 shadow-sm w-full md:w-fit mx-auto">
+      <div className="flex bg-white dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 shadow-sm w-full md:w-fit mx-auto transition-colors">
         <button 
           onClick={() => setActiveTab('news')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'news' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'news' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
         >
           <Newspaper size={18} /> News & Blogs
         </button>
         <button 
           onClick={() => setActiveTab('games')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'games' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'games' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
         >
           <Gamepad2 size={18} /> Arcade
         </button>
         <button 
           onClick={() => setActiveTab('chat')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'chat' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'chat' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
         >
           <Users size={18} /> Peer Chat
         </button>
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
         {activeTab === 'news' && <NewsFeed />}
         {activeTab === 'games' && <Arcade />}
         {activeTab === 'chat' && <PeerChat />}
@@ -44,6 +43,7 @@ export const SocialLounge: React.FC = () => {
 
 const NewsFeed = () => {
   const [news, setNews] = useState<{text: string, sources: any[]} | null>(null);
+  const [newsImage, setNewsImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,34 +52,59 @@ const NewsFeed = () => {
 
   const loadNews = async () => {
     setLoading(true);
+    setNewsImage(null);
+    
+    // 1. Fetch News Text
     const data = await getTrendingStudentNews();
     setNews(data);
+    
+    // 2. Generate Image based on the news summary
+    if (data.text && data.text.length > 20) {
+        const image = await generateNewsIllustration(data.text);
+        setNewsImage(image);
+    }
+    
     setLoading(false);
   };
 
-  if (loading) return <div className="h-full flex items-center justify-center text-gray-400"><RefreshCw className="animate-spin mr-2" /> Finding trending stories...</div>;
+  if (loading) return (
+      <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 gap-3">
+          <RefreshCw className="animate-spin" size={32} /> 
+          <p>Curating stories & generating art...</p>
+      </div>
+  );
 
   return (
     <div className="p-6 h-full overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
           <Newspaper className="text-pink-500" /> Trending Now
         </h2>
-        <button onClick={loadNews} className="text-indigo-600 text-sm hover:underline flex items-center gap-1">
+        <button onClick={loadNews} className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline flex items-center gap-1">
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
       
-      <div className="prose max-w-none text-gray-700 space-y-4">
-        {/* Simple Markdown Rendering replacement since we can't import react-markdown easily without adding package */}
+      {/* Generated Header Image */}
+      {newsImage && (
+          <div className="mb-6 rounded-xl overflow-hidden h-48 md:h-64 w-full relative shadow-md bg-gray-100 dark:bg-gray-900">
+              <img src={newsImage} alt="News Illustration" className="w-full h-full object-cover" />
+              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1">
+                  <ImageIcon size={12} /> AI Generated
+              </div>
+          </div>
+      )}
+
+      <div className="prose max-w-none text-gray-700 dark:text-gray-300 space-y-4">
+        {/* Render text directly, assuming asterisks are cleaned by service */}
         <div className="whitespace-pre-wrap leading-relaxed">
             {news?.text}
         </div>
       </div>
 
       {news?.sources && news.sources.length > 0 && (
-        <div className="mt-8 border-t pt-4">
-          <h3 className="font-semibold text-gray-600 mb-3 text-sm uppercase">Sources & Further Reading</h3>
+        <div className="mt-8 border-t dark:border-gray-700 pt-4">
+          <h3 className="font-semibold text-gray-600 dark:text-gray-400 mb-3 text-sm uppercase">Sources & Further Reading</h3>
           <div className="grid gap-2">
             {news.sources.map((source: any, idx: number) => {
               if (source.web?.uri) {
@@ -89,7 +114,7 @@ const NewsFeed = () => {
                       href={source.web.uri} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-blue-600 hover:text-blue-800"
+                      className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                     >
                       <ExternalLink size={16} />
                       <span className="truncate font-medium">{source.web.title || source.web.uri}</span>
@@ -110,11 +135,11 @@ const Arcade = () => {
 
   return (
     <div className="h-full flex flex-col">
-       <div className="bg-gray-50 border-b p-4 flex gap-4 justify-center">
-         <button onClick={() => setMode('quiz')} className={`px-4 py-2 rounded-full text-sm font-bold ${mode === 'quiz' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 border'}`}>
+       <div className="bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700 p-4 flex gap-4 justify-center">
+         <button onClick={() => setMode('quiz')} className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${mode === 'quiz' ? 'bg-purple-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-600'}`}>
            Brain Quiz
          </button>
-         <button onClick={() => setMode('word')} className={`px-4 py-2 rounded-full text-sm font-bold ${mode === 'word' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border'}`}>
+         <button onClick={() => setMode('word')} className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${mode === 'word' ? 'bg-orange-500 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border dark:border-gray-600'}`}>
            Word Scrabble
          </button>
        </div>
@@ -154,27 +179,27 @@ const QuizGame = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-purple-600" size={40} /><p className="mt-4 text-gray-500">Generating tricky questions...</p></div>;
+  if (loading) return <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-purple-600 dark:text-purple-400" size={40} /><p className="mt-4 text-gray-500 dark:text-gray-400">Generating tricky questions...</p></div>;
 
   if (questions.length === 0) return (
     <div className="text-center py-20">
-      <Trophy className="mx-auto text-purple-200 mb-4" size={64} />
-      <h3 className="text-2xl font-bold text-gray-800 mb-2">Quiz Arena</h3>
-      <p className="text-gray-500 mb-6">Test your knowledge with AI-generated questions.</p>
+      <Trophy className="mx-auto text-purple-200 dark:text-purple-900/50 mb-4" size={64} />
+      <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Quiz Arena</h3>
+      <p className="text-gray-500 dark:text-gray-400 mb-6">Test your knowledge with AI-generated questions.</p>
       <input 
         value={topic} 
         onChange={e => setTopic(e.target.value)} 
-        className="border p-2 rounded-lg mr-2" 
+        className="border dark:border-gray-600 p-2 rounded-lg mr-2 dark:bg-gray-700 dark:text-white" 
         placeholder="Enter topic..."
       />
-      <button onClick={startQuiz} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700">Start Quiz</button>
+      <button onClick={startQuiz} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 shadow-lg shadow-purple-200 dark:shadow-none">Start Quiz</button>
     </div>
   );
 
   if (finished) return (
-    <div className="text-center py-20 bg-purple-50 rounded-3xl">
-      <h3 className="text-3xl font-bold text-purple-900 mb-2">Quiz Complete!</h3>
-      <p className="text-xl text-purple-700 mb-8">You scored {score} out of {questions.length}</p>
+    <div className="text-center py-20 bg-purple-50 dark:bg-purple-900/20 rounded-3xl mx-4">
+      <h3 className="text-3xl font-bold text-purple-900 dark:text-purple-200 mb-2">Quiz Complete!</h3>
+      <p className="text-xl text-purple-700 dark:text-purple-300 mb-8">You scored {score} out of {questions.length}</p>
       <button onClick={() => setQuestions([])} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold">Play Again</button>
     </div>
   );
@@ -182,17 +207,17 @@ const QuizGame = () => {
   const q = questions[currentQ];
   return (
     <div className="max-w-xl mx-auto">
-      <div className="flex justify-between text-sm text-gray-500 mb-4 uppercase tracking-wider font-bold">
+      <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-wider font-bold">
         <span>Question {currentQ + 1}/{questions.length}</span>
         <span>Score: {score}</span>
       </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-6">{q.question}</h3>
+      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">{q.question}</h3>
       <div className="space-y-3">
         {q.options.map((opt: string, i: number) => (
           <button 
             key={i} 
             onClick={() => answer(i)}
-            className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all font-medium text-gray-700"
+            className="w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all font-medium text-gray-700 dark:text-gray-200"
           >
             {opt}
           </button>
@@ -238,12 +263,12 @@ const WordGame = () => {
 
   return (
     <div className="text-center max-w-lg mx-auto">
-      <h3 className="text-xl font-bold text-gray-800 mb-2">Word Scrabble</h3>
-      <p className="text-gray-500 mb-8">Form as many words as possible!</p>
+      <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Word Scrabble</h3>
+      <p className="text-gray-500 dark:text-gray-400 mb-8">Form as many words as possible!</p>
       
       <div className="flex justify-center gap-2 mb-8">
         {letters.map((l, i) => (
-          <div key={i} className="w-12 h-12 bg-orange-100 border-2 border-orange-300 rounded-lg flex items-center justify-center text-2xl font-bold text-orange-800 shadow-sm">
+          <div key={i} className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700 rounded-lg flex items-center justify-center text-2xl font-bold text-orange-800 dark:text-orange-200 shadow-sm">
             {l}
           </div>
         ))}
@@ -253,7 +278,7 @@ const WordGame = () => {
         <input 
           value={input}
           onChange={e => setInput(e.target.value)}
-          className="flex-1 p-3 border rounded-xl text-center uppercase font-bold tracking-widest text-lg"
+          className="flex-1 p-3 border dark:border-gray-600 rounded-xl text-center uppercase font-bold tracking-widest text-lg dark:bg-gray-700 dark:text-white"
           placeholder="TYPE WORD"
         />
         <button onClick={submitWord} className="bg-orange-500 text-white px-6 rounded-xl font-bold">Submit</button>
@@ -263,12 +288,12 @@ const WordGame = () => {
         <p className="text-sm font-bold text-gray-400 uppercase mb-2">Found Words ({foundWords.length})</p>
         <div className="flex flex-wrap gap-2">
           {foundWords.map(w => (
-            <span key={w} className="px-3 py-1 bg-gray-100 rounded-full text-sm font-medium text-gray-700">{w}</span>
+            <span key={w} className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm font-medium text-gray-700 dark:text-gray-300">{w}</span>
           ))}
         </div>
       </div>
       
-      <button onClick={init} className="mt-8 text-orange-600 text-sm hover:underline">New Letters</button>
+      <button onClick={init} className="mt-8 text-orange-600 dark:text-orange-400 text-sm hover:underline">New Letters</button>
     </div>
   );
 };
@@ -288,27 +313,27 @@ const PeerChat = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
          {msgs.map((m, i) => (
            <div key={i} className={`flex flex-col ${m.user === 'You' ? 'items-end' : 'items-start'}`}>
              <div className="flex items-center gap-2 mb-1">
-               <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
+               <div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-200">
                  {m.user[0]}
                </div>
-               <span className="text-xs text-gray-500 font-medium">{m.user}</span>
+               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{m.user}</span>
              </div>
-             <div className={`p-3 rounded-xl max-w-[80%] ${m.user === 'You' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border text-gray-800 rounded-tl-none'}`}>
+             <div className={`p-3 rounded-xl max-w-[80%] ${m.user === 'You' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-gray-700 border dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-tl-none'}`}>
                {m.text}
              </div>
            </div>
          ))}
       </div>
-      <div className="p-4 bg-white border-t flex gap-2">
+      <div className="p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex gap-2">
         <input 
           value={txt}
           onChange={e => setTxt(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && send()}
-          className="flex-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 p-3 border dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
           placeholder="Say hello to your peers..."
         />
         <button onClick={send} className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">

@@ -3,7 +3,11 @@ import { BookOpen, TrendingUp, ShieldCheck, Coins, MessageCircle, Send, Loader2,
 import { chatWithObiri, explainFinancialConcept, getFinancialResources } from '../services/geminiService';
 import { ChatMessage } from '../types';
 
-export const Learn: React.FC = () => {
+interface LearnProps {
+  userLanguage: string;
+}
+
+export const Learn: React.FC<LearnProps> = ({ userLanguage }) => {
   const [activeTab, setActiveTab] = useState<'concepts' | 'chat'>('concepts');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     { id: '1', role: 'model', text: "Hi! I'm Obiri. Ask me anything about student finance, time management, or setting goals.", timestamp: Date.now() }
@@ -26,7 +30,8 @@ export const Learn: React.FC = () => {
     setIsTyping(true);
 
     const context = "User is looking at the Learn Hub.";
-    const responseText = await chatWithObiri(userMsg.text, context);
+    // Pass userLanguage to the service
+    const responseText = await chatWithObiri(userMsg.text, context, userLanguage);
     
     const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', text: responseText, timestamp: Date.now() };
     setChatHistory(prev => [...prev, aiMsg]);
@@ -73,6 +78,7 @@ export const Learn: React.FC = () => {
                 subtitle="The 8th Wonder of the World"
                 description="Compound interest is interest calculated on the initial principal, which also includes all of the accumulated interest. It's 'interest on interest'."
                 detail="If you save $100/month at 7% interest, in 40 years you don't have $48,000 (just cash), you have over $260,000. Time is your best friend."
+                userLanguage={userLanguage}
               />
 
               <ConceptCard 
@@ -81,6 +87,7 @@ export const Learn: React.FC = () => {
                 subtitle="Low Risk, Steady Growth"
                 description="Short-term government debt obligations. You lend money to the government, and they pay you back with interest."
                 detail="Considered one of the safest investments. Ideal for students who want to preserve capital while earning more than a standard bank savings account."
+                userLanguage={userLanguage}
               />
 
               <ConceptCard 
@@ -89,6 +96,7 @@ export const Learn: React.FC = () => {
                 subtitle="Diversification Made Easy"
                 description="A pool of money collected from many investors to invest in securities like stocks, bonds, money market instruments, and other assets."
                 detail="Don't put all your eggs in one basket. Mutual funds allow you to own a small slice of hundreds of companies at once, lowering your risk."
+                userLanguage={userLanguage}
               />
 
               <ConceptCard 
@@ -97,6 +105,7 @@ export const Learn: React.FC = () => {
                 subtitle="IOUs & Fixed Income"
                 description="A fixed income instrument that represents a loan made by an investor to a borrower (typically corporate or governmental)."
                 detail="Think of it as lending money to a company. They pay you interest periodically and return your original money (principal) at the end date."
+                userLanguage={userLanguage}
               />
 
               <ConceptCard 
@@ -105,6 +114,7 @@ export const Learn: React.FC = () => {
                 subtitle="High Risk, High Reward"
                 description="Digital or virtual currencies that use cryptography for security. Decentralized networks based on blockchain technology."
                 detail="Warning: Crypto is volatile. Educational Rule #1: Never invest money you cannot afford to lose. Understand 'Utility' vs 'Hype'."
+                userLanguage={userLanguage}
               />
               
             </div>
@@ -118,7 +128,7 @@ export const Learn: React.FC = () => {
                </div>
                <div>
                  <h3 className="font-bold text-gray-800 dark:text-white">Obiri AI Mentor</h3>
-                 <p className="text-xs text-gray-500 dark:text-gray-400">Ask about budgets, schedules, or study tips</p>
+                 <p className="text-xs text-gray-500 dark:text-gray-400">Ask about budgets, schedules, or study tips ({userLanguage})</p>
                </div>
              </div>
 
@@ -174,10 +184,30 @@ export const Learn: React.FC = () => {
 };
 
 // Helper component for educational cards
-const ConceptCard: React.FC<{icon: React.ReactNode, title: string, subtitle: string, description: string, detail: string}> = ({ icon, title, subtitle, description, detail }) => {
+const ConceptCard: React.FC<{icon: React.ReactNode, title: string, subtitle: string, description: string, detail: string, userLanguage: string}> = ({ icon, title, subtitle, description, detail, userLanguage }) => {
   const [resources, setResources] = useState<{title: string, uri: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [translatedDesc, setTranslatedDesc] = useState(description);
+  const [translatedDetail, setTranslatedDetail] = useState(detail);
+  const [translating, setTranslating] = useState(false);
+
+  // Effect to translate static content if language changes from English
+  useEffect(() => {
+    const translateContent = async () => {
+      if (userLanguage === 'English') {
+        setTranslatedDesc(description);
+        setTranslatedDetail(detail);
+        return;
+      }
+      setTranslating(true);
+      // We use the chat service to "translate" or "explain in target language"
+      const desc = await explainFinancialConcept(title, userLanguage);
+      setTranslatedDesc(desc);
+      setTranslating(false);
+    };
+    translateContent();
+  }, [userLanguage, title, description, detail]);
 
   const toggleResources = async () => {
     if (expanded) {
@@ -204,10 +234,19 @@ const ConceptCard: React.FC<{icon: React.ReactNode, title: string, subtitle: str
           <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">{subtitle}</p>
         </div>
       </div>
-      <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 leading-relaxed flex-1">{description}</p>
-      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-sm text-gray-700 dark:text-gray-200 italic border-l-4 border-indigo-200 dark:border-indigo-800 mb-4">
-        "{detail}"
-      </div>
+      
+      {translating ? (
+        <div className="flex-1 py-4 flex items-center gap-2 text-gray-400">
+           <Loader2 className="animate-spin" size={16} /> Translating to {userLanguage}...
+        </div>
+      ) : (
+        <>
+          <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 leading-relaxed flex-1">{translatedDesc}</p>
+          <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-sm text-gray-700 dark:text-gray-200 italic border-l-4 border-indigo-200 dark:border-indigo-800 mb-4">
+            "{userLanguage === 'English' ? detail : "Concept details available above."}"
+          </div>
+        </>
+      )}
       
       <div className="mt-auto">
         <button 

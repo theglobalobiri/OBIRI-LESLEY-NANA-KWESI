@@ -1,11 +1,23 @@
 import React, { useRef } from 'react';
-import { UserCircle, Camera, Save, MapPin, BookOpen, Type } from 'lucide-react';
+import { UserCircle, Camera, Save, MapPin, BookOpen, Type, Globe } from 'lucide-react';
 import { UserState } from '../types';
 
 interface ProfileProps {
   state: UserState;
   updateState: (updates: Partial<UserState>) => void;
 }
+
+const LANGUAGES = [
+  'English', 
+  'Spanish', 
+  'French', 
+  'German', 
+  'Chinese (Mandarin)', 
+  'Hindi', 
+  'Arabic', 
+  'Portuguese',
+  'Swahili'
+];
 
 export const Profile: React.FC<ProfileProps> = ({ state, updateState }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +99,21 @@ export const Profile: React.FC<ProfileProps> = ({ state, updateState }) => {
               className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-colors"
               placeholder="e.g. London"
             />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <Globe size={16} /> Preferred Language
+            </label>
+            <select 
+              value={state.language || 'English'}
+              onChange={e => updateState({ language: e.target.value })}
+              className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-colors"
+            >
+              {LANGUAGES.map(lang => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
+            </select>
           </div>
         </div>
 
